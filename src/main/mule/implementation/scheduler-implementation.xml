@@ -58,7 +58,7 @@ http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/cu
 	<flow name="scheduler-implementationFlow" doc:id="d7f9a8dd-407b-4d8a-8c4b-63eab373192f" >
 		<scheduler doc:name="Scheduler" doc:id="df741108-5bd5-4582-974f-27e6dbc085e5" >
 			<scheduling-strategy >
-				<fixed-frequency frequency="1" timeUnit="HOURS"/>
+				<fixed-frequency frequency="24" timeUnit="HOURS"/>
 			</scheduling-strategy>
 		</scheduler>
 		<set-variable value='#[now() &gt;&gt; "UTC"]' doc:name="Set Variable" doc:id="675fd6b6-4c6f-42d5-916b-c8ed059249e7" variableName="start" />
