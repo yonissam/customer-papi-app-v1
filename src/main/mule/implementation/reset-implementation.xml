@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:email="http://www.mulesoft.org/schema/mule/email" xmlns:os="http://www.mulesoft.org/schema/mule/os"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd">
+	<sub-flow name="reset-system-api-request" doc:id="89b26a39-bd26-4b7b-a795-92920d7dd35e">
+		<logger level="INFO" doc:name="Request Reset Logger" doc:id="3e6de5d5-8a0a-4e98-898d-e1a994a3ab0b" message="#[%dw 2.0&#10;output application/json indent = false&#10;---&#10;{&#10;    TimeStamp: now() &gt;&gt; &quot;UTC&quot;,&#10;    TransactionId: vars.requestData.headers.'x-vio-transactionid',&#10;    AppName: app.name,&#10;    FlowName: flow.name, &#10;    BusinessProcessName: &quot;Customer Registration&quot;,&#10;    Category: &quot;Customer&quot;,&#10;    OriginatingApplication: &quot;Experience API&quot;,&#10;    DestinationApplication: &quot;System API&quot;,&#10;    CustomerId: &quot;NA&quot;,&#10;    TxnState: &quot;Request reset systems API&quot;&#10;}]" />
+		<http:request method="POST" doc:name="Reset System API Request" doc:id="6145a236-9e9a-4ef7-9533-df2ba30a8aec" config-ref="HTTP_Request_configuration" path="${http.request.path.reset}" responseTimeout="120000">
+			<http:body><![CDATA[#[vars.requestData.payload]]]></http:body>
+			<http:headers><![CDATA[#[output application/java
+---
+{
+	"clientSecret" : vars.requestData.headers.clientsecret,
+	"x-vio-transactionId" : vars.requestData.headers.'x-vio-transactionid',
+	"clientId" : vars.requestData.headers.clientid
+}]]]></http:headers>
+		</http:request>
+		<logger level="INFO" doc:name="Response Reset Logger" doc:id="9504eec1-e035-4ed6-8c9d-6ab6d04c5458" message="#[%dw 2.0&#10;output application/json indent = false&#10;---&#10;{&#10;    TimeStam: (now() &gt;&gt; &quot;UTC&quot;) [0 to 18],&#10;    TotalTime: now() &gt;&gt; &quot;UTC&quot;  - vars.start,&#10;    TransactionId: vars.requestData.headers.'x-vio-transactionid',&#10;    AppName: app.name,&#10;    FlowName: flow.name, &#10;    BusinessProcessName: &quot;Customer Registration&quot;,&#10;    Category: &quot;Customer&quot;,&#10;    OriginatingApplication: &quot;Experience API&quot;,&#10;    DestinationApplication: &quot;System API&quot;,&#10;    CustomerId: &quot;NA&quot;,&#10;    TxnState: &quot;Response reset system API&quot;&#10;}]" />
+	</sub-flow>
+	<sub-flow name="reset-process" doc:id="861c5fc8-0761-4682-a56e-22b9335b1f1f">
+		<choice doc:name="Choice" doc:id="074f1960-2b25-4dc2-9506-3ccfbb6ac96b">
+			<when expression="#[!isEmpty(payload.email)]">
+				<ee:transform doc:name="Transform Message" doc:id="fba7695b-2455-4f29-862b-6122d2d844d5">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+import modules::password
+---
+{
+	email: vars.requestData.payload.email,
+	"otp" : password::generate_password(9)
+}
+]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<os:store doc:name="Store" doc:id="abeed716-0ab4-4621-893e-2b7aa79dd127" key="otpReset" objectStore="Object_store">
+					<os:value><![CDATA[#[payload.otp]]]></os:value>
+				</os:store>
+				<email:send doc:name="Send" doc:id="bab9bc02-e42d-4e8d-8c9a-184e46544663" config-ref="Email_SMTP" fromAddress="notifications@vio.com" subject="One Time Password From VIO App">
+					<email:to-addresses>
+						<email:to-address value="#[vars.requestData.payload.email]" />
+					</email:to-addresses>
+					<email:body contentType="text/html">
+						<email:content><![CDATA[#["<h1> Login Credentials </h1>
+<h2> Hello $(payload.email)! </h2>
+<p1> Please use password: $(payload.otp) to reset your password. 
+Password will expire in 2 minutes </p1>"]]]></email:content>
+					</email:body>
+				</email:send>
+				<ee:transform doc:name="Transform Message" doc:id="afe60a56-a9ea-407f-be0f-88f59b42f3c7">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"customersResponse" : {
+		"eventInstanceId" : vars.requestData.headers.'x-vio-transactionid',
+		"status" : "success"
+}
+}
+]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise>
+				<ee:transform doc:name="Transform Message" doc:id="61f228c8-7d32-463d-b1e1-790bb0f63f7f">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message : "Username or password is incorrect, please try again"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</sub-flow>
+	<flow name="reset-implementationFlow" doc:id="f81ccdab-a958-4375-bf0a-c60c54566878">
+		<set-variable value='#[now() &gt;&gt; "UTC"]' doc:name="Set Variable" doc:id="df5df1a0-4b36-456f-95f8-7e399154a8e5" variableName="start" />
+		<logger level="INFO" doc:name="Reset Request Logger" doc:id="dfb309f2-ee4c-4108-9093-4ec3fdcb097b" message="#[%dw 2.0&#10;output application/json indent = false&#10;---&#10;{&#10;    TimeStamp: now() &gt;&gt; &quot;UTC&quot;,&#10;    TransactionId: vars.requestData.headers.'x-vio-transactionid',&#10;    AppName: app.name,&#10;    FlowName: flow.name, &#10;    BusinessProcessName: &quot;Customer Registration&quot;,&#10;    Category: &quot;Customer&quot;,&#10;    OriginatingApplication: &quot;Experience API&quot;,&#10;    DestinationApplication: &quot;Reset system API&quot;,&#10;    CustomerId: &quot;NA&quot;,&#10;    TxnState: &quot;Request reset system API&quot;&#10;}]" />
+		<flow-ref doc:name="Reset System API Request Flow Reference" doc:id="e27126b2-360d-4e27-9a8d-9f96412a0d72" name="reset-system-api-request" />
+		<flow-ref doc:name="Flow Reference Reset Process" doc:id="ccc88e03-d153-4eb6-b65e-5f4b3a50a88f" name="reset-process" />
+		<logger level="INFO" doc:name="Reset End Logger" doc:id="0787494f-a3bc-4680-b19d-75902d4229c1" message="#[%dw 2.0&#10;output application/json indent = false&#10;---&#10;{&#10;    TimeStam: (now() &gt;&gt; &quot;UTC&quot;) [0 to 18],&#10;    TotalTime: now() &gt;&gt; &quot;UTC&quot;  - vars.start,&#10;    TransactionId: vars.requestData.headers.'x-vio-transactionid',&#10;    AppName: app.name,&#10;    FlowName: flow.name, &#10;    BusinessProcessName: &quot;Customer Registration&quot;,&#10;    Category: &quot;Customer&quot;,&#10;    OriginatingApplication: &quot;Experience API&quot;,&#10;    DestinationApplication: &quot;Reset system API&quot;,&#10;    CustomerId: &quot;NA&quot;,&#10;    TxnState: &quot;Response reset system API&quot;&#10;}]" />
+		<error-handler ref="global-errorError_Handler" />
+	</flow>
+	<sub-flow name="passwword-reset-subflow" doc:id="5ba60e05-29cf-49a6-95fe-aa8cca839245">
+		<choice doc:name="Choice" doc:id="53ab434c-1d9d-4f4c-96fd-511764c0a8fd">
+			<when expression="#[!isEmpty(vars.otpResetValue) and (vars.requestData.payload.otp == vars.otpResetValue)]">
+				<logger level="INFO" doc:name="Passord Reset Request Logger" doc:id="e05ae51f-1ca8-4cbc-b5b6-caa89da19f17" message="#[%dw 2.0&#10;output application/json indent = false&#10;---&#10;{&#10;    TimeStamp: now() &gt;&gt; &quot;UTC&quot;,&#10;    TransactionId: vars.requestData.headers.'x-vio-transactionid',&#10;    AppName: app.name,&#10;    FlowName: flow.name, &#10;    BusinessProcessName: &quot;Customer Registration&quot;,&#10;    Category: &quot;Customer&quot;,&#10;    OriginatingApplication: &quot;Experience API&quot;,&#10;    DestinationApplication: &quot;Password reset system API&quot;,&#10;    CustomerId: &quot;NA&quot;,&#10;    TxnState: &quot;Request password reset system API&quot;&#10;}]" />
+				<http:request method="PUT" doc:name="Verify Process API Request" doc:id="bd50a710-9652-4ffd-9f33-d8a352f844b4" config-ref="HTTP_Request_configuration" path="${http.request.path.resetpassword}" responseTimeout="180000">
+					<http:body><![CDATA[#[vars.requestData.payload]]]></http:body>
+					<http:headers><![CDATA[#[output application/java
+---
+{
+	"clientSecret" : vars.requestData.headers.clientsecret,
+	"x-vio-transactionId" : vars.requestData.headers.'x-vio-transactionid',
+	"clientId" : vars.requestData.headers.clientid
+}]]]></http:headers>
+				</http:request>
+				<logger level="INFO" doc:name="Password Reset Response Logger" doc:id="71d4b3c2-06de-4cae-8b85-1f8c22853bde" message="#[%dw 2.0&#10;output application/json indent = false&#10;---&#10;{&#10;    TimeStam: (now() &gt;&gt; &quot;UTC&quot;) [0 to 18],&#10;    TotalTime: now() &gt;&gt; &quot;UTC&quot;  - vars.start,&#10;    TransactionId: vars.requestData.headers.'x-vio-transactionid',&#10;    AppName: app.name,&#10;    FlowName: flow.name, &#10;    BusinessProcessName: &quot;Customer Registration&quot;,&#10;    Category: &quot;Customer&quot;,&#10;    OriginatingApplication: &quot;Experience API&quot;,&#10;    DestinationApplication: &quot;Password reset system API&quot;,&#10;    CustomerId: &quot;NA&quot;,&#10;    TxnState: &quot;Response password reset system API&quot;&#10;}]" />
+				<ee:transform doc:name="Transform Message" doc:id="8ab520a4-8beb-40b9-b7aa-776e6f419e76">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"customersResponse" : {
+		"eventInstanceId" : vars.requestData.headers.'x-vio-transactionid',
+		"status" : "success"
+}
+}
+]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise>
+				<ee:transform doc:name="Transform Message" doc:id="96c6f7e6-bb62-408f-a019-d274369fe2fd">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message : "password expired, please try again"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</sub-flow>
+	<flow name="password-reset-implementationFlow" doc:id="bd2f653e-9f40-4dff-b425-6d349e3e08d6" >
+		<set-variable value='#[now() &gt;&gt; "UTC"]' doc:name="Set Variable" doc:id="3570d8f7-846a-4164-8a9f-d78d90f8c62c" variableName="start" />
+		<logger level="INFO" doc:name="Reset Password Request Logger" doc:id="64317045-960f-4f4e-a0e2-b0f773172973" message="#[%dw 2.0&#10;output application/json indent = false&#10;---&#10;{&#10;    TimeStamp: now() &gt;&gt; &quot;UTC&quot;,&#10;    TransactionId: vars.requestData.headers.'x-vio-transactionid',&#10;    AppName: app.name,&#10;    FlowName: flow.name, &#10;    BusinessProcessName: &quot;Customer Registration&quot;,&#10;    Category: &quot;Customer&quot;,&#10;    OriginatingApplication: &quot;Experience API&quot;,&#10;    DestinationApplication: &quot;Reset password system API&quot;,&#10;    CustomerId: &quot;NA&quot;,&#10;    TxnState: &quot;Request reset password system API&quot;&#10;}]" />
+		<os:retrieve doc:name="Retrieve" doc:id="29eda90a-3a08-4b56-bf58-db8ddfc0e448" key="otpReset" objectStore="Object_store" target="otpResetValue">
+			<os:default-value><![CDATA[#[""]]]></os:default-value>
+		</os:retrieve>
+		<flow-ref doc:name="Password Reset Flow Reference" doc:id="e05f25d5-3184-4020-8a30-be819b3ce90a" name="passwword-reset-subflow"/>
+		<logger level="INFO" doc:name="Reset Password End Logger" doc:id="0374beab-b03c-460a-8099-1d738bd21473" message="#[%dw 2.0&#10;output application/json indent = false&#10;---&#10;{&#10;    TimeStam: (now() &gt;&gt; &quot;UTC&quot;) [0 to 18],&#10;    TotalTime: now() &gt;&gt; &quot;UTC&quot;  - vars.start,&#10;    TransactionId: vars.requestData.headers.'x-vio-transactionid',&#10;    AppName: app.name,&#10;    FlowName: flow.name, &#10;    BusinessProcessName: &quot;Customer Registration&quot;,&#10;    Category: &quot;Customer&quot;,&#10;    OriginatingApplication: &quot;Experience API&quot;,&#10;    DestinationApplication: &quot;Reset password system API&quot;,&#10;    CustomerId: &quot;NA&quot;,&#10;    TxnState: &quot;Response reset password system API&quot;&#10;}]" />
+		<error-handler ref="global-errorError_Handler" />
+	</flow>
+</mule>
