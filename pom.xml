@@ -29,6 +29,26 @@
 				<artifactId>mule-maven-plugin</artifactId>
 				<version>${mule.maven.plugin.version}</version>
 				<extensions>true</extensions>
+				<configuration>
+					<armDeployment>
+						<muleVersion>4.4.0</muleVersion>
+						<uri>https://anypoint.mulesoft.com</uri>
+						<target>server-2</target>
+						<targetType>server</targetType>
+						<username>yoniss</username>
+						<password>yoniss123</password>
+						<environment>Sandbox</environment>
+						<properties>
+							<http.listener.port>8063</http.listener.port>
+							<http.readtimeout.port>600000</http.readtimeout.port>
+							<mule.env>dev</mule.env>
+							<mule.secretKey>MdQSwbvT9C14Nv#rFvpSI6OVP4mj4#@h</mule.secretKey>
+							<api.id>18622425</api.id>
+							<anypoint.platform.client_id>${anypoint.platform.client_id}</anypoint.platform.client_id>
+							<anypoint.platform.client_secret>${anypoint.platform.client_secret}</anypoint.platform.client_secret>
+						</properties>
+					</armDeployment>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>
@@ -49,7 +69,19 @@
 		<dependency>
 			<groupId>org.mule.modules</groupId>
 			<artifactId>mule-apikit-module</artifactId>
-			<version>1.8.2</version>
+			<version>1.8.3</version>
+			<classifier>mule-plugin</classifier>
+		</dependency>
+		<dependency>
+			<groupId>org.mule.connectors</groupId>
+			<artifactId>mule-objectstore-connector</artifactId>
+			<version>1.2.1</version>
+			<classifier>mule-plugin</classifier>
+		</dependency>
+		<dependency>
+			<groupId>org.mule.connectors</groupId>
+			<artifactId>mule-email-connector</artifactId>
+			<version>1.7.1</version>
 			<classifier>mule-plugin</classifier>
 		</dependency>
 	</dependencies>

@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+	<os:object-store name="Object_store1" doc:name="Object store" doc:id="82023ff3-7aa1-4961-9113-16adf74a027f" />
+	<sub-flow name="sfdc-request-subflow" doc:id="ce27b14e-925e-44a2-86dc-c75b1382e23b" >
+		<logger level="INFO" doc:name="Request SFDC Logger" doc:id="3575b0d2-41f7-47a0-855d-94cc37cf8c00" message="#[%dw 2.0&#10;output application/json indent = false&#10;---&#10;{&#10;    TimeStamp: now() &gt;&gt; &quot;UTC&quot;,&#10;    TransactionId: vars.requestData.headers.'x-vio-transactionid',&#10;    AppName: app.name,&#10;    FlowName: flow.name, &#10;    BusinessProcessName: &quot;Customer Registration&quot;,&#10;    Category: &quot;Customer&quot;,&#10;    OriginatingApplication: &quot;NA&quot;,&#10;    DestinationApplication: &quot;Salesforce&quot;,&#10;    CustomerId: &quot;NA&quot;,&#10;    TxnState: &quot;Request salesforce system API&quot;&#10;}]" />
+		<http:request method="GET" doc:name="Get Data System API Request" doc:id="12330360-833d-4987-a805-14a441784b28" config-ref="HTTP_Request_configuration" path="${http.request.path.getdata}" responseTimeout="350000">
+			<http:headers><![CDATA[#[output application/java
+---
+{
+	"clientSecret" : "dsgfhaegur457r6ewsewegrfjesh",
+	"x-vio-transactionId" : "dbfhjsdb-hfb-do8ryt-876utt7-5ty364ol",
+	"clientId" : "hsdfgysdhfcdshf37er6twgsdhfjcd"
+}]]]></http:headers>
+			<http:query-params><![CDATA[#[output application/java
+---
+{
+	"fromDate" : (vars.watermark) as LocalDateTime
+}]]]></http:query-params>
+		</http:request>
+		<logger level="INFO" doc:name="Response SFDC Logger" doc:id="4371a8c3-c6fc-4cf0-a6d8-4e335db6887e" message="#[%dw 2.0&#10;output application/json indent = false&#10;---&#10;{&#10;    TimeStam: (now() &gt;&gt; &quot;UTC&quot;) [0 to 18],&#10;    TotalTime: now() &gt;&gt; &quot;UTC&quot;  - vars.start,&#10;    TransactionId: vars.requestData.headers.'x-vio-transactionid',&#10;    AppName: app.name,&#10;    FlowName: flow.name, &#10;    BusinessProcessName: &quot;Customer Registration&quot;,&#10;    Category: &quot;Customer&quot;,&#10;    OriginatingApplication: &quot;NA&quot;,&#10;    DestinationApplication: &quot;Salesforce&quot;,&#10;    CustomerId: &quot;NA&quot;,&#10;    TxnState: &quot;Response salesforce system API&quot;&#10;}]" />
+	</sub-flow>
+	<sub-flow name="databse-insert-subflow" doc:id="4021d2d5-29a2-4d8e-bf90-5a48019639a9" >
+		<choice doc:name="Choice" doc:id="31498993-3bb6-4c4b-9154-d4d88db02572">
+			<when expression="#[!isEmpty(payload)]">
+				<os:store doc:name="Store" doc:id="20c92990-d937-4055-9098-e298efa9c579" key="record_id" objectStore="Object_store1">
+			<os:value><![CDATA[#[max(payload.last_modified_date)]]]></os:value>
+		</os:store>
+				<set-variable value='#[now() &gt;&gt; "UTC"]' doc:name="Set Variable" doc:id="0d5ec9a6-01b1-4ce0-bf08-d0fff2e66b7b" variableName="start2" />
+				<logger level="INFO" doc:name="Request Database Logger" doc:id="84a90a94-6fe5-43b0-890e-f1794f5c7015" message="#[%dw 2.0&#10;output application/json indent = false&#10;---&#10;{&#10;    TimeStamp: now() &gt;&gt; &quot;UTC&quot;,&#10;    TransactionId: vars.requestData.headers.'x-vio-transactionid',&#10;    AppName: app.name,&#10;    FlowName: flow.name, &#10;    BusinessProcessName: &quot;Customer Registration&quot;,&#10;    Category: &quot;Customer&quot;,&#10;    OriginatingApplication: &quot;NA&quot;,&#10;    DestinationApplication: &quot;System API&quot;,&#10;    CustomerId: &quot;NA&quot;,&#10;    TxnState: &quot;Request database system API&quot;&#10;}]" />
+				<http:request method="POST" doc:name="Post Data System API Request" doc:id="fda8de17-cc8c-4c2e-ad6f-7724b0e423d2" config-ref="HTTP_Request_configuration" path="${http.request.path.postdata}" responseTimeout="400000">
+			<http:headers><![CDATA[#[output application/java
+---
+{
+	"clientSecret" : "dsgfhaegur457r6ewsewegrfjesh",
+	"x-vio-transactionId" : "dbfhjsdb-hfb-do8ryt-876utt7-5ty364ol",
+	"clientId" : "hsdfgysdhfcdshf37er6twgsdhfjcd"
+}]]]></http:headers>
+			<http:query-params><![CDATA[#[output application/java
+---
+{
+	"fromDate" : ((now() >> "UTC") - |P30D|) as LocalDateTime,
+	"toDate" : ((now() >> "UTC") - |PT1H|) as LocalDateTime
+}]]]></http:query-params>
+		</http:request>
+				<logger level="INFO" doc:name="Response Database Logger" doc:id="da1dbcca-3660-41d1-a4f6-4d09c985d253" message="#[%dw 2.0&#10;output application/json indent = false&#10;---&#10;{&#10;    TimeStam: (now() &gt;&gt; &quot;UTC&quot;) [0 to 18],&#10;    TotalTime: now() &gt;&gt; &quot;UTC&quot;  - vars.start2,&#10;    TransactionId: vars.requestData.headers.'x-vio-transactionid',&#10;    AppName: app.name,&#10;    FlowName: flow.name, &#10;    BusinessProcessName: &quot;Customer Registration&quot;,&#10;    Category: &quot;Customer&quot;,&#10;    OriginatingApplication: &quot;NA&quot;,&#10;    DestinationApplication: &quot;System API&quot;,&#10;    CustomerId: &quot;NA&quot;,&#10;    TxnState: &quot;Response database system API&quot;&#10;}]" />
+			</when>
+			<otherwise>
+				<logger level="INFO" doc:name="Logger" doc:id="55a81d1e-73e9-4385-a2f4-0af5c7057ad9" message="No new data" />
+			</otherwise>
+		</choice>
+	</sub-flow>
+	<flow name="scheduler-implementationFlow" doc:id="d7f9a8dd-407b-4d8a-8c4b-63eab373192f" >
+		<scheduler doc:name="Scheduler" doc:id="df741108-5bd5-4582-974f-27e6dbc085e5" >
+			<scheduling-strategy >
+				<fixed-frequency frequency="1" timeUnit="HOURS"/>
+			</scheduling-strategy>
+		</scheduler>
+		<set-variable value='#[now() &gt;&gt; "UTC"]' doc:name="Set Variable" doc:id="675fd6b6-4c6f-42d5-916b-c8ed059249e7" variableName="start" />
+		<logger level="INFO" doc:name="Start Scheduler Logger" doc:id="d22a638b-05fc-480f-9c64-a8d5d51e872b" message="#[%dw 2.0&#10;output application/json indent = false&#10;---&#10;{&#10;    TimeStamp: now() &gt;&gt; &quot;UTC&quot;,&#10;    TransactionId: vars.requestData.headers.'x-vio-transactionid',&#10;    AppName: app.name,&#10;    FlowName: flow.name, &#10;    BusinessProcessName: &quot;Customer Registration&quot;,&#10;    Category: &quot;Customer&quot;,&#10;    OriginatingApplication: &quot;NA&quot;,&#10;    DestinationApplication: &quot;System API&quot;,&#10;    CustomerId: &quot;NA&quot;,&#10;    TxnState: &quot;START scheduler process&quot;&#10;}]" />
+		<os:retrieve doc:name="Retrieve" doc:id="b68e06f6-b2ef-477d-89ed-053b49bbba51" key="record_id" objectStore="Object_store1" target="watermark">
+			<os:default-value><![CDATA[2023-03-10T22:29:51.4815905Z]]></os:default-value>
+		</os:retrieve>
+		<flow-ref doc:name="SFDC Request Flow Reference" doc:id="d1c0019d-b77d-4d55-a0b2-6d44e9b3167f" name="sfdc-request-subflow" />
+		<ee:transform doc:name="Transform Message" doc:id="a7b7a5e1-1f32-48c4-817b-888b37d36081" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map((item,index) -> {
+	"record_id" : item.Id__c as Number,
+	"Name": item.Name,
+	"firstName": item.firstName__c,
+	"lastName": item.lastName__c,
+	"contactType": item.contactType__c,
+	"countryCode": item.countryCode__c,
+	"mobile": item.mobile__c,
+	"email": item.email__c,
+	"password": item.password__c,
+	"acceptDataPolicy": item.acceptDataPolicy__c,
+	"recieveNews": item.recieveNews__c,
+	"acceptPIC": item.acceptPIC__c,
+	"locale": item.locale__c,
+	"captchatoken": item.captchatoken__c,
+	"recieveClaimsettle": item.recieveClaimsettle__c,
+	"last_modified_date": item.LastModifiedDate,
+	"data_submitted_at" : now() >> "UTC"
+})]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<flow-ref doc:name="Database Insert Flow Reference" doc:id="9e44ba6d-fec5-4872-a8cb-50b14da4696e" name="databse-insert-subflow" />
+		<logger level="INFO" doc:name="End Scheduler Logger" doc:id="2b4bb196-4e53-474c-b5db-40d449ec65f9" message="#[%dw 2.0&#10;output application/json indent = false&#10;---&#10;{&#10;    TimeStam: (now() &gt;&gt; &quot;UTC&quot;) [0 to 18],&#10;    TotalTime: now() &gt;&gt; &quot;UTC&quot;  - vars.start,&#10;    TransactionId: vars.requestData.headers.'x-vio-transactionid',&#10;    AppName: app.name,&#10;    FlowName: flow.name, &#10;    BusinessProcessName: &quot;Customer Registration&quot;,&#10;    Category: &quot;Customer&quot;,&#10;    OriginatingApplication: &quot;NA&quot;,&#10;    DestinationApplication: &quot;System API&quot;,&#10;    CustomerId: &quot;NA&quot;,&#10;    TxnState: &quot;End scheduler process&quot;&#10;}]" />
+		<error-handler ref="global-errorError_Handler" />
+	</flow>
+</mule>

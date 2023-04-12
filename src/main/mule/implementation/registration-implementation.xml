@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<sub-flow name="Notifcation-Process-API" doc:id="c5627deb-6ba2-49de-aa5b-80f2378d709b" >
+		<logger level="INFO" doc:name="Notification Request Logger" doc:id="e9bfd5c3-bd50-42ca-8ecd-b275383bd2cb" message="#[%dw 2.0&#10;output application/json indent = false&#10;---&#10;{&#10;    TimeStamp: now() &gt;&gt; &quot;UTC&quot;,&#10;    TransactionId: vars.requestData.headers.'x-vio-transactionid',&#10;    AppName: app.name,&#10;    FlowName: flow.name, &#10;    BusinessProcessName: &quot;Customer Registration&quot;,&#10;    Category: &quot;Customer&quot;,&#10;    OriginatingApplication: &quot;Process API&quot;,&#10;    DestinationApplication: &quot;System Notification API&quot;,&#10;    CustomerId: &quot;NA&quot;,&#10;    TxnState: &quot;Request Notification System API&quot;&#10;}]" />
+		<http:request method="POST" doc:name="Notification Process API Request" doc:id="2b351316-1840-495c-879a-f9566c4efc89" config-ref="HTTP_Request_configuration" path="${http.request.path.notify}" responseTimeout="120000">
+			<http:body><![CDATA[#[vars.requestData.payload.contact]]]></http:body>
+			<http:headers><![CDATA[#[output application/java
+---
+{
+	"clientSecret" : vars.requestData.headers.clientsecret,
+	"x-vio-transactionId" : vars.requestData.headers.'x-vio-transactionid',
+	"clientId" : vars.requestData.headers.clientid
+}]]]></http:headers>
+		</http:request>
+		<logger level="INFO" doc:name="Notification Response Logger" doc:id="df9c0e36-97b1-48c9-b12c-7d2f7093f5f8" message="#[%dw 2.0&#10;output application/json indent = false&#10;---&#10;{&#10;    TimeStam: (now() &gt;&gt; &quot;UTC&quot;) [0 to 18],&#10;    TotalTime: now() &gt;&gt; &quot;UTC&quot;  - vars.start,&#10;    TransactionId: vars.requestData.headers.'x-vio-transactionid',&#10;    AppName: app.name,&#10;    FlowName: flow.name, &#10;    BusinessProcessName: &quot;Customer Registration&quot;,&#10;    Category: &quot;Customer&quot;,&#10;    OriginatingApplication: &quot;System API&quot;,&#10;    DestinationApplication: &quot;Notification API&quot;,&#10;    CustomerId: &quot;NA&quot;,&#10;    TxnState: &quot;Response Notification System API&quot;&#10;}]" />
+	</sub-flow>
+	<sub-flow name="Registration-Process-API" doc:id="0eb57b75-77a3-4b6b-beb0-0f9b51667960" >
+		<logger level="INFO" doc:name="Registration Request Logger" doc:id="591f7ae5-6120-4676-9c9e-539175da0936" message="#[%dw 2.0&#10;output application/json indent = false&#10;---&#10;{&#10;    TimeStamp: now() &gt;&gt; &quot;UTC&quot;,&#10;    TransactionId: vars.requestData.headers.'x-vio-transactionid',&#10;    AppName: app.name,&#10;    FlowName: flow.name, &#10;    BusinessProcessName: &quot;Customer Registration&quot;,&#10;    Category: &quot;Customer&quot;,&#10;    OriginatingApplication: &quot;Process API&quot;,&#10;    DestinationApplication: &quot;System API&quot;,&#10;    CustomerId: &quot;NA&quot;,&#10;    TxnState: &quot;Request System API&quot;&#10;}]" />
+		<http:request method="POST" doc:name="Registration Process API Request" doc:id="cb0925d4-ae34-4f38-8b40-f9f316226273" config-ref="HTTP_Request_configuration" path="${http.request.path.register}" responseTimeout="120000">
+			<http:body><![CDATA[#[vars.requestData.payload]]]></http:body>
+			<http:headers><![CDATA[#[output application/java
+---
+{
+	"clientSecret" : vars.requestData.headers.clientsecret,
+	"x-vio-transactionId" : vars.requestData.headers.'x-vio-transactionid',
+	"clientId" : vars.requestData.headers.clientid
+}]]]></http:headers>
+		</http:request>
+		<logger level="INFO" doc:name="Registration End Logger" doc:id="277749a2-1310-43eb-b6e7-a2a9bcf53c5a" message="#[%dw 2.0&#10;output application/json indent = false&#10;---&#10;{&#10;    TimeStam: (now() &gt;&gt; &quot;UTC&quot;) [0 to 18],&#10;    TotalTime: now() &gt;&gt; &quot;UTC&quot;  - vars.start,&#10;    TransactionId: vars.requestData.headers.'x-vio-transactionid',&#10;    AppName: app.name,&#10;    FlowName: flow.name, &#10;    BusinessProcessName: &quot;Customer Registration&quot;,&#10;    Category: &quot;Customer&quot;,&#10;    OriginatingApplication: &quot;System API&quot;,&#10;    DestinationApplication: &quot;Registration SFDC and Database&quot;,&#10;    CustomerId: &quot;NA&quot;,&#10;    TxnState: &quot;Response System API&quot;&#10;}]" />
+	</sub-flow>
+	<flow name="registration-implementationFlow" doc:id="25bf7f71-48cd-460f-82bf-0a18722f602f" >
+		<set-variable value='#[now() &gt;&gt; "UTC"]' doc:name="Set Variable" doc:id="818a4c8e-f6cd-4d17-915b-bc34b8c1398e" variableName="start"/>
+		<flow-ref doc:name="Flow Reference Registration Process API" doc:id="e9f1afa2-2e55-475b-92a0-6edf3cf2b361" name="Registration-Process-API" />
+		<flow-ref doc:name="Flow Reference Notifcation Process API" doc:id="68610cb8-63da-4bb5-a905-7b22ddf629b2" name="Notifcation-Process-API" />
+		<ee:transform doc:name="Transform Message" doc:id="6941cbfa-87da-40c4-9567-b9857406bbf5" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"customersResponse" : {
+		"eventInstanceId" : vars.requestData.headers.'x-vio-transactionid',
+		"status" : "success"
+}
+}
+]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<error-handler ref="global-errorError_Handler" />
+	</flow>
+</mule>

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+	<sub-flow name="verify-subflow" doc:id="0533f629-2c7b-4b26-b2b4-1da11a21a163" >
+		<choice doc:name="Choice" doc:id="cdc24d47-a40e-4e1f-b8cd-1a9374bb8b8e">
+			<when expression="#[!isEmpty(vars.otpValue) and (vars.requestData.payload.otp == vars.otpValue)]">
+				<logger level="INFO" doc:name="Verify Request Logger" doc:id="866757f9-e5c6-4b0e-b2c0-99ea50180a4e" message="#[%dw 2.0&#10;output application/json indent = false&#10;---&#10;{&#10;    TimeStamp: now() &gt;&gt; &quot;UTC&quot;,&#10;    TransactionId: vars.requestData.headers.'x-vio-transactionid',&#10;    AppName: app.name,&#10;    FlowName: flow.name, &#10;    BusinessProcessName: &quot;Customer Registration&quot;,&#10;    Category: &quot;Customer&quot;,&#10;    OriginatingApplication: &quot;Experience API&quot;,&#10;    DestinationApplication: &quot;Verify system API&quot;,&#10;    CustomerId: &quot;NA&quot;,&#10;    TxnState: &quot;Request verify system API&quot;&#10;}]" />
+				<http:request method="POST" doc:name="Verify Process API Request" doc:id="197f5309-80c7-4eb8-b66e-c1c68527353c" config-ref="HTTP_Request_configuration" path="${http.request.path.verify}" responseTimeout="60000">
+					<http:body ><![CDATA[#[vars.requestData.payload]]]></http:body>
+					<http:headers ><![CDATA[#[output application/java
+---
+{
+	"clientSecret" : vars.requestData.headers.clientsecret,
+	"x-vio-transactionId" : vars.requestData.headers.'x-vio-transactionid',
+	"clientId" : vars.requestData.headers.clientid
+}]]]></http:headers>
+				</http:request>
+				<logger level="INFO" doc:name="Verify Response Logger" doc:id="e2e79ea2-2b81-4ca0-9c92-11c635c3a478" message="#[%dw 2.0&#10;output application/json indent = false&#10;---&#10;{&#10;    TimeStam: (now() &gt;&gt; &quot;UTC&quot;) [0 to 18],&#10;    TotalTime: now() &gt;&gt; &quot;UTC&quot;  - vars.start,&#10;    TransactionId: vars.requestData.headers.'x-vio-transactionid',&#10;    AppName: app.name,&#10;    FlowName: flow.name, &#10;    BusinessProcessName: &quot;Customer Registration&quot;,&#10;    Category: &quot;Customer&quot;,&#10;    OriginatingApplication: &quot;Experience API&quot;,&#10;    DestinationApplication: &quot;Verify system API&quot;,&#10;    CustomerId: &quot;NA&quot;,&#10;    TxnState: &quot;Response verify system API&quot;&#10;}]" />
+				<ee:transform doc:name="Transform Message" doc:id="13614dba-e35c-4639-823e-b41c04a7be67">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise>
+				<ee:transform doc:name="Transform Message" doc:id="3742945e-8817-4c03-be43-c8815147368b">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message : "password expired, please try again"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</sub-flow>
+	<flow name="verify-implementationFlow" doc:id="4f1bd469-3de7-4c3d-b446-cf24e9f390f1" >
+		<set-variable value='#[now() &gt;&gt; "UTC"]' doc:name="Set Variable" doc:id="6a2dbe5f-8b45-454e-970e-08fe2715791f" variableName="start" />
+		<logger level="INFO" doc:name="Verify Start Logger" doc:id="fa16882b-40d0-4ed7-abca-531f6356bb42" message="#[%dw 2.0&#10;output application/json indent = false&#10;---&#10;{&#10;    TimeStamp: now() &gt;&gt; &quot;UTC&quot;,&#10;    TransactionId: vars.requestData.headers.'x-vio-transactionid',&#10;    AppName: app.name,&#10;    FlowName: flow.name, &#10;    BusinessProcessName: &quot;Customer Registration&quot;,&#10;    Category: &quot;Customer&quot;,&#10;    OriginatingApplication: &quot;Experience API&quot;,&#10;    DestinationApplication: &quot;NA&quot;,&#10;    CustomerId: &quot;NA&quot;,&#10;    TxnState: &quot;Start verify process API&quot;&#10;}]" />
+		<os:retrieve doc:name="Retrieve" doc:id="fe28719e-f73d-458f-aa27-b6f1a709e1a1" key="otp" objectStore="Object_store" target="otpValue">
+			<os:default-value><![CDATA[#[""]]]></os:default-value>
+		</os:retrieve>
+		<flow-ref doc:name="Flow Reference" doc:id="72acc827-1dbd-43cf-b89f-e3f731031b99" name="verify-subflow" />
+		<logger level="INFO" doc:name="Verify End Logger" doc:id="b2ad7f67-8c59-4c23-a984-3c49458ac622" message="#[%dw 2.0&#10;output application/json indent = false&#10;---&#10;{&#10;    TimeStam: (now() &gt;&gt; &quot;UTC&quot;) [0 to 18],&#10;    TotalTime: now() &gt;&gt; &quot;UTC&quot;  - vars.start,&#10;    TransactionId: vars.requestData.headers.'x-vio-transactionid',&#10;    AppName: app.name,&#10;    FlowName: flow.name, &#10;    BusinessProcessName: &quot;Customer Registration&quot;,&#10;    Category: &quot;Customer&quot;,&#10;    OriginatingApplication: &quot;Experience API&quot;,&#10;    DestinationApplication: &quot;NA&quot;,&#10;    CustomerId: &quot;NA&quot;,&#10;    TxnState: &quot;End verify process API&quot;&#10;}]" />
+		<error-handler ref="global-errorError_Handler" />
+	</flow>
+</mule>

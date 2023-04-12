@@ -1,17 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
+<mule xmlns:api-gateway="http://www.mulesoft.org/schema/mule/api-gateway"
+	xmlns:email="http://www.mulesoft.org/schema/mule/email"
+	xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
 	xmlns:http="http://www.mulesoft.org/schema/mule/http"
-	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
 http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd 
-http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd
+http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd">
 	<http:listener-config name="customer-xpapi-raml-httpListenerConfig">
         <http:listener-connection host="0.0.0.0" port="${http.listener.port}" readTimeout="${http.listener.readtimeout}"/>
     </http:listener-config>
-    <apikit:config name="customer-xpapi-raml-config" api="customer-xpapi-raml.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <apikit:config name="api-config" api="api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
 	<configuration doc:name="Configuration" doc:id="5af01698-3439-44dd-a74b-b203ab96288b" defaultErrorHandler-ref="global-errorError_Handler" />
-	<configuration-properties doc:name="Configuration properties" doc:id="881cfd07-62e5-4d9a-aaf6-8265fb8854fd" file="properties/${mule.env}" />
+	<configuration-properties doc:name="Configuration properties" doc:id="881cfd07-62e5-4d9a-aaf6-8265fb8854fd" file="properties/${mule.env}.yaml" />
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="148c8cb5-91aa-431b-9384-6f51060c8d19" >
+		<http:request-connection host="${http.request.host}" port="${http.request.port}" connectionIdleTimeout="600000"/>
+	</http:request-config>
+	<os:config name="ObjectStore_Config" doc:name="ObjectStore Config" doc:id="7e82f072-c2a5-4715-b73d-f4eb66425cab" >
+		<os:connection />
+	</os:config>
+	<os:object-store name="Object_store" doc:name="Object store" doc:id="adec9ab8-7fd7-4a4b-b236-c26b17b02e45" entryTtl="2" entryTtlUnit="MINUTES" />
+	<email:smtp-config name="Email_SMTP" doc:name="Email SMTP" doc:id="8f3d6f91-d5cd-4e51-b198-3560c39935c5" >
+		<email:smtp-connection host="192.168.0.136" port="2525" />
+	</email:smtp-config>
+	<api-gateway:autodiscovery apiId="18622524" ignoreBasePath="true" doc:name="API Autodiscovery" doc:id="48217240-c676-4839-91fd-dfc1a90c624c" flowRef="api-main" />
 	
 </mule>
