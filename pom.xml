@@ -39,7 +39,7 @@
 						<password>yoniss123</password>
 						<environment>Sandbox</environment>
 						<properties>
-							<http.listener.port>8063</http.listener.port>
+							<http.listener.port>8062</http.listener.port>
 							<http.readtimeout.port>600000</http.readtimeout.port>
 							<mule.env>dev</mule.env>
 							<mule.secretKey>MdQSwbvT9C14Nv#rFvpSI6OVP4mj4#@h</mule.secretKey>
