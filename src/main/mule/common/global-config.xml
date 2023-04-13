@@ -24,7 +24,7 @@ http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/m
 	</os:config>
 	<os:object-store name="Object_store" doc:name="Object store" doc:id="adec9ab8-7fd7-4a4b-b236-c26b17b02e45" entryTtl="2" entryTtlUnit="MINUTES" />
 	<email:smtp-config name="Email_SMTP" doc:name="Email SMTP" doc:id="8f3d6f91-d5cd-4e51-b198-3560c39935c5" >
-		<email:smtp-connection host="192.168.0.136" port="2525" />
+		<email:smtp-connection host="192.168.0.186" port="2525" />
 	</email:smtp-config>
 	<api-gateway:autodiscovery apiId="18622524" ignoreBasePath="true" doc:name="API Autodiscovery" doc:id="48217240-c676-4839-91fd-dfc1a90c624c" flowRef="api-main" />
 	
